@@ -1,1 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>777 Arcade</title>
+<style>
+body{
+    background:#0f0f0f;
+    color:white;
+    font-family:Arial;
+    margin:0;
+}
 
+#left{
+    position:fixed;
+    left:0;
+    top:0;
+    width:250px;
+    height:100%;
+    background:#1b1b1b;
+    padding:15px;
+    overflow:auto;
+}
+
+#main{
+    margin-left:270px;
+    text-align:center;
+    margin-top:50px;
+}
+
+.reel{
+    display:inline-block;
+    font-size:60px;
+    width:80px;
+}
+
+button{
+    padding:12px 30px;
+    font-size:18px;
+    cursor:pointer;
+}
+
+input{
+    padding:8px;
+    font-size:16px;
+}
+</style>
+</head>
+<body>
+
+<div id="left">
+<h3>🏆 Leaderboard</h3>
+<div id="board"></div>
+<hr>
+<div id="stats"></div>
+</div>
+
+<div id="main">
+<h1>🎰 777 Arcade</h1>
+
+<input id="nick" placeholder="Nickname">
+<button onclick="spin()">SPIN</button>
+
+<div style="margin-top:40px;">
+<span class="reel" id="r1">0</span>
+<span class="reel" id="r2">0</span>
+<span class="reel" id="r3">0</span>
+</div>
+
+<h2 id="rarity"></h2>
+<div id="streak"></div>
+</div>
+
+<script>
+async function updateBoard(){
+    const res = await fetch("/leaderboard");
+    const data = await res.json();
+    const board = document.getElementById("board");
+    board.innerHTML="";
+    data.forEach((p,i)=>{
+        board.innerHTML += `<div>${i+1}. ${p.nickname} - ${p.bestRarity||"None"}</div>`;
+    });
+}
+
+async function spin(){
+    const nickname = document.getElementById("nick").value;
+    if(!nickname) return alert("Enter nickname");
+
+    const reels = ["r1","r2","r3"];
+
+    let interval = setInterval(()=>{
+        reels.forEach(r=>{
+            document.getElementById(r).innerText = Math.floor(Math.random()*10);
+        });
+    },50);
+
+    setTimeout(async ()=>{
+        clearInterval(interval);
+
+        const res = await fetch("/spin",{
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({nickname})
+        });
+
+        const data = await res.json();
+
+        document.getElementById("r1").innerText = data.digits[0];
+        document.getElementById("r2").innerText = data.digits[1];
+        document.getElementById("r3").innerText = data.digits[2];
+
+        document.getElementById("rarity").innerText = data.rarity;
+        document.getElementById("rarity").style.color = data.color;
+
+        document.getElementById("streak").innerText = 
+            "🔥 Streak: " + data.streak;
+
+        document.getElementById("stats").innerHTML =
+            `Total Spins: ${data.stats.totalSpins}<br>
+             Jackpot Hits: ${data.stats.jackpotHits}`;
+
+        if(data.rarity === "⭐ SPECIAL"){
+            alert("🎉 JACKPOT 777 🎉");
+        }
+
+        updateBoard();
+
+    },1200);
+}
+
+updateBoard();
+</script>
+
+</body>
+</html>
